@@ -5,7 +5,7 @@ The zipped file contains two folders: (1) scripts, (2) htmls (3) input_data_file
 # System requirements
 
 R scripts were run using Windows 10 x64 with RStudio v1.1.447 using this R session:
-
+```
 R version 3.5.0 (2018-04-23)
 Platform: x86_64-w64-mingw32/x64 (64-bit)
 Running under: Windows >= 8 x64 (build 9200)
@@ -41,15 +41,18 @@ loaded via a namespace (and not attached):
 [79] evaluate_0.12         latticeExtra_0.6-28   data.table_1.11.8     foreach_1.4.4         gtable_0.2.0          purrr_0.2.5          
 [85] kernlab_0.9-27        assertthat_0.2.0      viridisLite_0.3.0     class_7.3-14          survival_2.41-3       pcaPP_1.9-73         
 [91] tibble_1.4.2          iterators_1.0.10      AnnotationDbi_1.44.0  memoise_1.1.0         IRanges_2.16.0        bindrcpp_0.2.2
+```
 
 No non-standard hardware is required.
 
 ## Installation
 
 RStudio installation is required along with the packages listed as follows:
+```
  [1] ggdendro_0.1-20       pvclust_2.0-0         dendextend_1.9.0      factoextra_1.0.5      gridExtra_2.3         reshape_0.8.8
  [7] ggplot2_3.1.0         gtools_3.8.1          WGCNA_1.66            fastcluster_1.1.25    dynamicTreeCut_1.63-1 edgeR_3.24.0         
 [13] limma_3.38.2        
+```
 
 Typical install time for RStudio and the listed packages should be <15 min
 
@@ -64,13 +67,16 @@ a) aaegypti_transcriptome_v2.Rmd
 b) bmalayi_transcriptome_v2.Rmd
 c) wbm_transcriptome_v2.Rmd
 
-[97] cluster_2.0.7-1
-
 Each of the three scripts takes these inputs:
+
 a) geneinfo - table containing functional annotation for the analyzed genes
+
 b) counts - matrix of read counts for each gene, constructed as described in the Materials and Methods
+
 c) tpm  - matrix of TPM for each gene
+
 d) groups - used to assign groups and colors for the different samples
+
 e) output directory path
 
 Change the "Input file paths" code block to run the scripts on your local system.
@@ -85,26 +91,29 @@ For each of the Rmd files, the inputs are:
 
 ### aaegypti_transcriptome.Rmd
 
+```
 geneinfo.path <- aaegypti_gene.info
-
 counts.path <- aaegypti_counts.tsv
-
 tpm.path <- aaegypti_tpm.tsv
-
 groups.path <- aaegypti_groups.tsv
+```
 
 ### bmalayi_transcriptome.Rmd
 
+```
 geneinfo.path <- bmalayi_gene.info
 counts.path <- bmalayi_counts.tsv
 tpm.path <- bmalayi_tpm.tsv
 groups.path <- bmalayi_groups.tsv
+```
 
 ### wbm_transcriptome.Rmd
 
+```
 geneinfo.path <- wbm_gene.info
 counts.path <- wbm_counts.tsv
 tpm.path <- wbm_tpm.tsv
 groups.path <- wbm_groups.tsv
+```
 
 Each of these scripts should take <30 min.
