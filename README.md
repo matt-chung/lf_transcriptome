@@ -6,7 +6,7 @@ Matthew Chung
 
 The repository contains three folders: (1) scripts, (2) htmls (3) input_data_files used to replicate the transcriptomics analysis in the manuscript.
 
-# System requirements
+## System requirements
 
 R scripts were run using Windows 10 x64 with RStudio v1.1.447 using this R session:
 ```
@@ -68,7 +68,9 @@ Open Rmd scripts using RStudio and alter the input files to the files listed in 
 The scripts folder contains three Rmd scripts used for the transcriptome analysis of each organism:
 
 a) aaegypti_transcriptome_v2.Rmd
+
 b) bmalayi_transcriptome_v2.Rmd
+
 c) wbm_transcriptome_v2.Rmd
 
 Each of the three scripts takes these inputs:
