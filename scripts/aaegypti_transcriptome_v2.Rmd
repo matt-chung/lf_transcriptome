@@ -1,0 +1,623 @@
+---
+title: "A. aegypti transcriptome v2"
+author: "Matthew Chung"
+date: "June 17, 2019"
+output: 
+  html_document:
+    highlight: kate
+    toc: TRUE
+---
+
+## packages
+
+```{r packages}
+require(cowplot)
+require(dendextend)
+require(edgeR)
+require(FactoMineR)
+require(ggdendro)
+require(ggplot2)
+require(gplots)
+require(gridExtra)
+require(gtools)
+require(multcompView)
+require(pvclust)
+require(reshape)
+require(vegan)
+require(WGCNA)
+```
+
+## functions
+
+```{r functions}
+source("X:/mattchung/scripts/heatmap.2.fix.R")
+
+find_soft_power <- function(sft){
+  df <- as.data.frame(cbind(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2]))
+  y <- -sign(sft$fitIndices[,3])*sft$fitIndices[,2]
+  dy <- diff(y) 
+  softpower <- which(abs(diff(y)) < 0.05)[1]
+  return(softpower)
+}
+
+eigengene_refit <- function(tpm.de, mergedMEs){
+  tpm.de.wgcna <- tpm.de
+  tpm.de.wgcna$invert <- T
+  for(i in 1:nrow(tpm.de)){
+    max <- 0
+    for(j in 1:ncol(mergedMEs)){
+      cor <- abs(cor(t(tpm.de[i,]), mergedMEs[,j], method = "pearson"))
+      if(cor > max){
+        max <- cor
+        tpm.de.wgcna$module[i] <- colnames(mergedMEs)[j]
+      }
+    }
+    if(cor(t(tpm.de[i,]), mergedMEs[,which(colnames(mergedMEs) == tpm.de.wgcna$module[i])], method = "pearson") > 0){
+      tpm.de.wgcna$invert[i] <- F
+    }
+  }
+  tpm.de.wgcna$module <- gsub("^ME","",tpm.de.wgcna$module)
+  return(tpm.de.wgcna)
+}
+
+eigengene_invert_id <- function(tpm.de.wgcna, mergedColors, mergedMEs){
+  tpm.de.wgcna$invert <- T
+  tpm.de.wgcna$module <- mergedColors
+  for(i in 1:nrow(tpm.de.wgcna)){
+    if(cor(t(tpm.de[i,]), mergedMEs[,which(colnames(mergedMEs) == paste0("ME",tpm.de.wgcna$module[i]))], method = "pearson") > 0){
+      tpm.de.wgcna$invert[i] <- F
+    }
+  }
+  return(tpm.de.wgcna)
+}
+
+wgcna_heatmap_reorder <- function(tpm.de.wgcna){
+  clusters <- as.data.frame(table(tpm.de.wgcna$module))
+  clusters <- clusters[order(-clusters[,2]),1]
+  
+  tpm.de.wgcna.reordered <- as.data.frame(matrix(nrow = 0,
+                                                 ncol = ncol(tpm.de.wgcna)))
+  for(i in 1:length(clusters)){
+    tpm.de.wgcna.reordered <- as.data.frame(rbind(tpm.de.wgcna.reordered,
+                                                  tpm.de.wgcna[tpm.de.wgcna$module == clusters[i] & tpm.de.wgcna$invert == F,],
+                                                  tpm.de.wgcna[tpm.de.wgcna$module == clusters[i] & tpm.de.wgcna$invert == T,]))
+  }
+  return(tpm.de.wgcna.reordered)
+}
+
+extract_top_percent_contributing_genes <- function(vector,max) {
+  vector <- sort(vector, decreasing = T)
+  genes <- c()
+  contrib <- 0
+  while(contrib < max){
+    genes <- c(genes,names(vector[1]))
+    contrib <- contrib + vector[i]
+    vector <- vector[-1]
+  }
+  return(genes)
+}
+
+get_heatmap_separators <- function(vector){
+  sep <- c()
+  for(i in 2:length(unique(vector))){
+    sep[length(sep) + 1] <- min(which(vector == unique(vector)[i])) - 1
+  }
+  return(sep)
+}
+
+get_dendro_structure <- function(result){
+  structure <- hang.dendrogram(as.dendrogram(result$hclust))
+  structure <- capture.output(str(structure))
+  structure <- structure[grepl("leaf", structure)]
+  structure <- as.numeric(as.character(substr(structure, regexpr("h=", structure ) + 3, regexpr("  )", structure))))
+  return(structure)
+}
+get_dendro_data <- function(result){
+  dendro.data <- dendro_data(result$hclust)
+  dendro.data <- dendro.data$segments[which(dendro.data$segments$y == dendro.data$segments$yend),]
+  for(i in 1:nrow(dendro.data)){
+    dendro.data$minx[i] <- min(c(dendro.data$x[i], dendro.data$xend[i]))
+  }
+  dendro.data <- dendro.data[order(as.numeric(as.character(dendro.data$y)), as.numeric(as.character(dendro.data$minx))),]
+  return(dendro.data)
+}
+get_dendro_bootstraps <- function(dendro_data){
+  bootstrap.positions <- as.data.frame(matrix(nrow = length(dendro_data$y[duplicated(dendro_data$y)]),
+                                              ncol = 2))
+  for(i in 1:length(dendro_data$y[duplicated(dendro_data$y)])){
+    dendro_data.subset <- dendro_data[which(dendro_data$y == dendro_data$y[duplicated(dendro_data$y)][i]),]
+    bootstrap.positions[i,1] <- unique(dendro_data.subset$x)
+    bootstrap.positions[i,2] <- unique(dendro_data.subset$y)
+  }
+  return(bootstrap.positions)
+}
+functionaltermenrichment <- function(genes, geneinfo){
+  for(i in 1:ncol(geneinfo)){geneinfo[,i] <- as.character(geneinfo[,i])}
+  geneinfo$interpro_description[which(is.na(geneinfo$interpro_description))] <- "No InterPro entry"
+  geneinfo$go_biologicalprocess[which(is.na(geneinfo$go_biologicalprocess))] <- "No GO terms for biological process"
+  geneinfo$go_cellularcomponent[which(is.na(geneinfo$go_cellularcomponent))] <- "No GO terms for cellular component"
+  geneinfo$go_molecularfunction[which(is.na(geneinfo$go_molecularfunction))] <- "No GO terms for molecular function"
+  
+  functionalterms.list <- list(ipr=as.data.frame(table(unlist(strsplit(paste(geneinfo$interpro_description, collapse = "|"),  split = "[|]")))),
+                               gobio=as.data.frame(table(unlist(strsplit(paste(geneinfo$go_biologicalprocess, collapse = "|"),  split = "[|]")))),
+                               gocell=as.data.frame(table(unlist(strsplit(paste(geneinfo$go_cellularcomponent, collapse = "|"),  split = "[|]")))),
+                               gomol=as.data.frame(table(unlist(strsplit(paste(geneinfo$go_molecularfunction, collapse = "|"),  split = "[|]")))))
+  
+  geneinfo.subset <- geneinfo[geneinfo$gene %in% genes,]
+  term <- c()
+  clusteroccurences <- c()
+  genomeoccurences <- c()
+  pvalue <- c()
+  correctedpvalue <- c()
+  oddsratio <- c()
+
+  functionalterms.list.subset <- list(ipr=as.data.frame(table(unlist(strsplit(paste(geneinfo.subset$interpro_description, collapse = "|"),  split = "[|]")))),
+                                      gobio=as.data.frame(table(unlist(strsplit(paste(geneinfo.subset$go_biologicalprocess, collapse = "|"),  split = "[|]")))),
+                                      gocell=as.data.frame(table(unlist(strsplit(paste(geneinfo.subset$go_cellularcomponent, collapse = "|"),  split = "[|]")))),
+                                      gomol=as.data.frame(table(unlist(strsplit(paste(geneinfo.subset$go_molecularfunction, collapse = "|"),  split = "[|]")))))
+  
+  for(i in 1:length(functionalterms.list)){
+    for(j in 1:nrow(functionalterms.list[[i]])){
+      freq.all <- functionalterms.list[[i]][j,2]
+      freq.subset <- ifelse(functionalterms.list[[i]][j,1] %in% functionalterms.list.subset[[i]][,1],
+                            functionalterms.list.subset[[i]][functionalterms.list.subset[[i]][,1] == as.character(functionalterms.list[[i]][j,1]),2],
+                            0)
+      genes.all <- nrow(geneinfo)
+      genes.subset <- nrow(geneinfo.subset)
+
+      fisherexact.matrix <- matrix(c(freq.subset, freq.all - freq.subset,
+                                     genes.subset - freq.subset, genes.all - genes.subset - freq.all + freq.subset),
+                                   nrow = 2,
+                                   ncol = 2)
+      fisher.test <- fisher.test(fisherexact.matrix)
+      
+      term[length(term) + 1] <- as.character(functionalterms.list[[i]][j,1])
+      clusteroccurences[length(clusteroccurences) + 1] <- as.numeric(as.character(freq.subset))
+      genomeoccurences[length(genomeoccurences) + 1] <- as.numeric(as.character(freq.all))
+      pvalue[length(pvalue) + 1] <- as.numeric(as.character(fisher.test$p.value))
+      correctedpvalue[length(correctedpvalue) + 1] <- p.adjust(as.numeric(as.character(fisher.test$p.value)), method = "fdr", n = nrow(functionalterms.list[[i]]))
+      oddsratio[length(oddsratio) + 1] <- as.numeric(as.character(fisher.test$estimate))
+    }
+  }
+  
+  terms.df <- as.data.frame(cbind(term,
+                                  clusteroccurences,
+                                  genomeoccurences,
+                                  pvalue,
+                                  correctedpvalue,
+                                  oddsratio))
+  terms.df <- terms.df[order(as.numeric(as.character(terms.df$pvalue))),]
+  return(terms.df)
+}
+```
+
+## set input paths
+
+```{r setinputs}
+counts.path <- "X:/mattchung/aaegypti_counts.tsv"
+tpm.path <- "X:/mattchung/EBMAL/aaegypti_tpm.tsv"
+groups.path <- "X:/mattchung/EBMAL/aaegypti_groups.tsv"
+geneinfo.path <- "X:/mattchung/EBMAL/aaegypti_gene.info"
+output_dir <- "Z:/EBMAL/mchung_dir/aaegypti_transcriptome"
+```
+
+## read inputs
+
+```{r readinputs}
+counts <- read.delim(counts.path, header = T, row.names = 1)
+tpm <- read.delim(tpm.path, header = T, row.names = 1)
+groups <- read.delim(groups.path, header = F)
+geneinfo <- read.delim(geneinfo.path, header = T)
+
+sort(colSums(counts))
+```
+
+## levels
+
+```{r set_levels}
+groups[,1] <- factor(groups[,1], levels = groups[,1])
+groups[,2] <- factor(groups[,2], levels = unique(groups[,2]))
+groups[,3] <- factor(groups[,3], levels = unique(groups[,3]))
+
+counts <- counts[match(rownames(tpm),rownames(counts)),match(groups[,1],colnames(counts))]
+tpm <- tpm[,match(groups[,1],colnames(tpm))]
+geneinfo <- geneinfo[match(rownames(tpm),geneinfo$gene),]
+```
+
+## rarefaction analysis
+
+```{r rarefaction, fig.height = 5, fig.width = 6}
+rarefy.counts <- round(counts,0)
+raremax <- round(min(rowSums(t(rarefy.counts))),0)
+srare <- rarefy(t(rarefy.counts),raremax)
+
+rarefy.raw.df <- rarecurve(t(rarefy.counts), step = round(raremax/10,0), sample = raremax)
+
+rarefy.df <- as.data.frame(matrix(nrow = 0,
+                                  ncol = 5))
+rarefy.points.df <- rarefy.df
+for(i in 1:length(rarefy.raw.df)){
+  steps <- as.numeric(gsub("N","",names(rarefy.raw.df[[i]])))
+  detected_genes <- as.numeric(rarefy.raw.df[[i]])
+  rarefy.df <- as.data.frame(rbind(rarefy.df,
+                                   cbind(as.numeric(steps),as.numeric(detected_genes),as.character(groups[i,1]),as.character(groups[i,2]),groups[i,3])))
+  rarefy.points.df <- as.data.frame(rbind(rarefy.points.df,
+                                          cbind(as.numeric(max(steps)),as.numeric(max(detected_genes)),as.character(groups[i,1]),as.character(groups[i,2],groups[i,3]))))
+  
+}
+rarefy.plot <- ggplot()+
+  geom_line(mapping=aes(x=as.numeric(as.character(rarefy.df[,1])), y=as.numeric(as.character(rarefy.df[,2])),group=rarefy.df[,3],color=rarefy.df[,4]))+
+  #geom_point(mapping=aes(x=as.numeric(as.character(rarefy.df[,1])), y=as.numeric(as.character(rarefy.df[,2])),group=rarefy.df[,3],color=rarefy.df[,4]))+
+  geom_point(mapping=aes(x=as.numeric(as.character(rarefy.points.df[,1])), y=as.numeric(as.character(rarefy.points.df[,2])),group=rarefy.points.df[,3],color=rarefy.points.df[,4]),size = 3)+
+  guides(colour = F,shape = F)+
+  scale_color_manual(values = levels(groups[,3]))+
+  labs(x="reads mapping to protein-coding genes", y="genes detected", color = "Sample")+
+  theme_bw()
+
+print(rarefy.plot)
+
+pdf(paste0(output_dir,"/rarefication_plot.pdf"),
+    height=5,
+    width=8)
+print(rarefy.plot)
+dev.off()
+```
+
+## exclude low count samples
+
+```{r exclude_samples}
+groups <- groups[grep("polyAs_BmV18hpi",groups[,1],invert=T),]
+
+groups[,1] <- factor(groups[,1], levels = groups[,1])
+groups[,2] <- factor(groups[,2], levels = unique(groups[,2]))
+groups[,3] <- factor(groups[,3], levels = unique(groups[,3]))
+
+counts <- counts[,match(groups[,1],colnames(counts))]
+tpm <- tpm[,match(groups[,1],colnames(tpm))]
+```
+
+## edgeR
+
+```{r edgeR}
+FDRcutoff <- 0.05
+
+cpm.cutoff <- 5/min(colSums(counts)) * 1000000
+
+print(paste0(nrow(counts)," total genes"))
+
+y <- DGEList(counts = counts, group = groups[,2])
+y <- calcNormFactors(y)
+keep <- rowSums(cpm(y) >= cpm.cutoff) >= min(table(groups[,2]))
+keep.df <- as.data.frame(table(keep))
+print(paste0(keep.df[keep.df[,1] == F,2]," genes excluded using edgeR filter"))
+
+y <- y[keep, , keep.lib.sizes = F]
+design <- model.matrix(~groups[,2])
+y <- estimateDisp(y , design)
+fit <- glmQLFit(y, design)
+qlf <- glmQLFTest(fit, coef = 2:ncol(fit))
+
+FDR <- as.data.frame(p.adjust(qlf$table$PValue, method="BH"))
+rownames(FDR) <- rownames(qlf$table)
+colnames(FDR) <- FDR
+degenes <- rownames(FDR[FDR[,1] < FDRcutoff, , drop = F])
+
+print(paste0(length(degenes)," DE genes"))
+
+write.table(FDR,
+            paste0(output_dir,"/edgeR_FDR_values.tsv"),
+            row.names = T,
+            col.names = T,
+            quote = F,
+            sep = "\t")
+
+tpm.de <- tpm[rownames(tpm) %in% degenes,]
+tpm.nde <- tpm[!(rownames(tpm) %in% degenes),]
+
+write.table(tpm.de,
+            paste0(output_dir,"/tpm_de.tsv"),
+            row.names = T,
+            col.names = T,
+            quote = F,
+            sep = "\t")
+write.table(tpm.nde,
+            paste0(output_dir,"/tpm_nde.tsv"),
+            row.names = T,
+            col.names = T,
+            quote = F,
+            sep = "\t")
+
+dim(tpm.de)
+dim(tpm.nde)
+```
+
+## dendrogram
+
+```{r dendrogram, fig.height = 5, fig.width = 8}
+dendrogram <- as.data.frame(t(scale(t(tpm.de))))
+
+result <- pvclust(dendrogram, method.dist="cor", method.hclust="average", nboot=100)
+
+structure <- get_dendro_structure(result)
+dendro.data <- get_dendro_data(result)
+bootstrap.positions <- get_dendro_bootstraps(dendro.data)
+  
+points.df <- as.data.frame(cbind(seq(1,length(structure),1),
+                                 structure))
+dendrogroups <- groups[,2][result$hclust$order]
+dendrocol <- groups[,3][result$hclust$order]
+dendrosize <- colSums(counts)[result$hclust$order]
+  
+dendrogram.plot <- ggdendrogram(hang.dendrogram(as.dendrogram(result$hclust)), theme_dendro = T)+
+  geom_point(aes(x=seq(1,length(structure)), y = structure, color = dendrogroups, size = dendrosize))+
+  scale_color_manual(values = levels(groups[,3]))+
+  labs(x = "", y = "", col = "Samples", size = "Reads Mapped\nto Features")+
+  guides(colour = guide_legend(ncol = 2))+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0, hjust = 1),
+        axis.text.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+for(i in 1:length(result$edges$bp)){
+  text <- round(result$edges$bp[i] * 100,0)
+  dendrogram.plot <- dendrogram.plot + annotate("text", label = text, x=bootstrap.positions[i,1] + 0.4, y=bootstrap.positions[i,2] + 0.03, size = 2)
+}
+
+print(dendrogram.plot)
+
+pdf(paste0(output_dir,"/tpm_de_dendrogram_plot.pdf"),
+    height=5,
+    width=7)
+print(dendrogram.plot)
+dev.off()
+```
+
+## pca
+
+```{r pca, fig.height = 5, fig.width = 7}
+pca <- PCA(as.data.frame(scale(t(tpm.de))), graph = FALSE, ncp = ncol(counts) - 1)
+
+pca.plot <- ggplot()+
+  geom_point(aes(x=pca$ind$coord[,1], y=pca$ind$coord[,2], color = groups[,2], size = colSums(counts)))+
+  labs(col = "Samples", size = "Reads Mapped\nto Features", 
+       x = paste0("PC1 (", round(pca$eig[1,2],1), "%)"), 
+       y = paste0("PC2 (", round(pca$eig[2,2],1), "%)"))+
+  guides(colour = guide_legend(ncol = 2))+
+  scale_color_manual(values = levels(groups[,3]))+
+  theme_bw()
+
+print(pca.plot)
+
+pdf(paste0(output_dir,"/tpm_de_pca_plot.pdf"),
+    height=5,
+    width=6.5)
+print(pca.plot)
+dev.off()
+```
+
+## wgcna - soft power
+
+```{r wgcna_softpower, fig.height = 4, fig.width = 8}
+wgcna <- as.data.frame(t(tpm.de))
+powers <- c(c(1:10), seq(from = 12, to=20, by=2))
+sft <- pickSoftThreshold(wgcna, powerVector = powers, verbose = 5)
+softpower <- find_soft_power(sft)
+
+text.color <- rep("black",length(sft$fitIndices[,1]))
+text.color[which(sft$fitIndices[,1] == softpower)] <- "red"
+
+scale_independence.plot <- ggplot()+
+  geom_text(mapping = aes(x = sft$fitIndices[,1], y = -sign(sft$fitIndices[,3])*sft$fitIndices[,2], label=sft$fitIndices[,1]), color = text.color)+
+  labs(title = "scale independence", x = "soft threshold (power)", y = "scale free topology model fit, signed R^2")+
+  theme_bw()
+
+mean_connectivity.plot <- ggplot()+
+  geom_text(mapping = aes(x = sft$fitIndices[,1], y = sft$fitIndices[,5], label=sft$fitIndices[,1]), color = text.color)+
+  labs(title = "mean connectivity", x = "soft threshold (power)", y = "mean connectivity")+
+  theme_bw()
+
+wgcna_soft_power_plots <- list(scale_independence.plot, mean_connectivity.plot)
+lay <- rbind(c(1,2))
+
+grid.arrange(grobs = wgcna_soft_power_plots,
+             widths = c(5,5),
+             heights = c(5),
+             layout_matrix = lay)
+
+pdf(paste0(output_dir,"/wgcna_soft_power_plot.pdf"),
+    width = 8, 
+    height = 4)
+grid.arrange(grobs = wgcna_soft_power_plots,
+             widths = c(5,5),
+             heights = c(5),
+             layout_matrix = lay)
+dev.off()
+```
+
+## wgcna - create modules
+
+```{r wgcna_createmodules, fig.height = 4, fig.width = 8}
+adjacency <- adjacency(wgcna, power = softpower)
+TOM <- TOMsimilarity(adjacency)
+dissTOM <- 1-TOM
+geneTree <- hclust(as.dist(dissTOM), method = "average");
+
+minModuleSize <- 1
+dynamicMods <- cutreeDynamic(dendro = geneTree, distM = dissTOM,
+                             deepSplit = 2, pamRespectsDendro = FALSE,
+                             minClusterSize = minModuleSize)
+
+dynamicColors = labels2colors(dynamicMods)
+MEList = moduleEigengenes(wgcna, colors = dynamicColors)
+MEs = MEList$eigengenes
+MEDiss = 1-cor(MEs, use = "pairwise.complete.obs")
+METree = hclust(as.dist(MEDiss), method = "average")
+
+MEDissThres = 0.4
+
+pdf(paste0(output_dir,"/wgcna_merge_eigengenes_plot.pdf"),
+    width = 8,
+    height = 5)
+plot(METree, main = "clustering of module eigengenes",
+     xlab = "", sub = "")
+
+abline(h=MEDissThres, col = "red")
+dev.off()
+
+plot(METree, main = "clustering of module eigengenes",
+     xlab = "", sub = "")
+abline(h=MEDissThres, col = "red")
+```
+
+## wgcna - merge modules
+
+```{r wgcna_mergemodules, fig.height = 4, fig.width = 8}
+merge = mergeCloseModules(wgcna, dynamicColors, cutHeight = MEDissThres, verbose = 3)
+mergedColors = merge$colors
+mergedMEs = merge$newMEs
+
+pdf(paste0(output_dir,"/wgcna_eigengene_dendrogram_plot.pdf"),
+    width = 8,
+    height = 5)
+plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors), c("dynamic tree cut", "merged dynamic"),
+                    dendroLabels = FALSE, hang = 0.03, addGuide = TRUE, guideHang = 0.05)
+dev.off()
+
+plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors), c("dynamic tree cut", "merged dynamic"),
+                    dendroLabels = FALSE, hang = 0.03, addGuide = TRUE, guideHang = 0.05)
+```
+
+## wgcna - write modules
+
+```{r wgcna_writemodules, fig.height = 10, fig.width = 5}
+tpm.de.wgcna <- eigengene_invert_id(tpm.de, mergedColors, mergedMEs)
+tpm.de.wgcna <- wgcna_heatmap_reorder(tpm.de.wgcna)
+
+write.table(tpm.de.wgcna,
+            paste0(output_dir,"/tpm_de_modules.tsv"),
+            row.names = T,
+            col.names = T,
+            quote = F,
+            sep = "\t")
+```
+
+## wgcna - module heatmap
+
+```{r wgcna_moduleheatmap, fig.height = 10, fig.width = 5}
+log2tpm.de <- log2(tpm.de.wgcna[,1:(ncol(tpm.de.wgcna) - 2)] + 1)
+zscore.log2tpm.de <- as.data.frame(t(scale(t(log2tpm.de))))
+
+hmcol <- colorRampPalette(c("navyblue","white","firebrick3"))(12)
+rowcol1 <- tpm.de.wgcna$module
+colcol <- as.character(groups[,3])
+rowsep <- get_heatmap_separators(rowcol1)
+colsep <- get_heatmap_separators(colcol)
+
+rowcol2 <- tpm.de.wgcna$invert
+rowcol2[rowcol2 == F] <- "grey"
+rowcol2[rowcol2 == T] <- "black"
+
+pdf(paste0(output_dir,"/wgcna_zscorelog2tpm_heatmap.pdf"),
+    width = 5,
+    height = 10)
+heatmap.2.fix(as.matrix(zscore.log2tpm.de),
+              col=hmcol,
+              trace="none",
+              labRow=vector(mode = "character", length = nrow(zscore.log2tpm.de)),
+              Rowv = F,
+              Colv = F,
+              RowSideColors=rowcol1,
+              ColSideColors=colcol,
+              lhei = c(2,8),
+              breaks = seq(-3,3,by=.5),
+              rowsep = rowsep,
+              colsep = colsep,
+              dendrogram = "none")
+heatmap.2.fix(as.matrix(zscore.log2tpm.de),
+              col=hmcol,
+              trace="none",
+              labRow=vector(mode = "character", length = nrow(zscore.log2tpm.de)),
+              Rowv = F,
+              Colv = F,
+              RowSideColors=rowcol2,
+              ColSideColors=colcol,
+              lhei = c(2,8),
+              breaks = seq(-3,3,by=.5),
+              rowsep = rowsep,
+              colsep = colsep,
+              dendrogram = "none")
+dev.off()
+
+heatmap.2.fix(as.matrix(zscore.log2tpm.de),
+              col=hmcol,
+              trace="none",
+              labRow=vector(mode = "character", length = nrow(zscore.log2tpm.de)),
+              Rowv = F,
+              Colv = F,
+              RowSideColors=rowcol1,
+              ColSideColors=colcol,
+              lhei = c(2,8),
+              breaks = seq(-3,3,by=.5),
+              rowsep = rowsep,
+              colsep = colsep,
+              dendrogram = "none")
+heatmap.2.fix(as.matrix(zscore.log2tpm.de),
+              col=hmcol,
+              trace="none",
+              labRow=vector(mode = "character", length = nrow(zscore.log2tpm.de)),
+              Rowv = F,
+              Colv = F,
+              RowSideColors=rowcol2,
+              ColSideColors=colcol,
+              lhei = c(2,8),
+              breaks = seq(-3,3,by=.5),
+              rowsep = rowsep,
+              colsep = colsep,
+              dendrogram = "none")
+```
+
+## wgcna - module functional term enrichment
+
+```{r functionaltermenrichment}
+terms.colnames <- c("term","clusteroccurences","genomeoccurences","pvalue","correctedpvalue","oddsratio","module","invert")
+terms.wgcna <- as.data.frame(matrix(nrow = 0,
+                                    ncol = 8))
+colnames(terms.wgcna) <- terms.colnames
+for(i in 1:length(unique(tpm.de.wgcna$module))){
+  terms.wgcna.f <- as.data.frame(cbind(functionaltermenrichment(rownames(tpm.de.wgcna)[tpm.de.wgcna$module == unique(tpm.de.wgcna$module)[i] & tpm.de.wgcna$invert == F],geneinfo),unique(tpm.de.wgcna$module)[i],F))
+  terms.wgcna.t <- as.data.frame(cbind(functionaltermenrichment(rownames(tpm.de.wgcna)[tpm.de.wgcna$module == unique(tpm.de.wgcna$module)[i] & tpm.de.wgcna$invert == T],geneinfo),unique(tpm.de.wgcna$module)[i],T))
+  
+  colnames(terms.wgcna.f) <- terms.colnames
+  colnames(terms.wgcna.t) <- terms.colnames
+  terms.wgcna <- as.data.frame(rbind(terms.wgcna,
+                                     terms.wgcna.f, 
+                                     terms.wgcna.t))
+}
+
+pvalue.cutoff <- 0.05
+terms.wgcna.sig <- terms.wgcna[as.numeric(as.character(terms.wgcna$correctedpvalue)) < pvalue.cutoff,]
+print(paste0(nrow(terms.wgcna.sig)," significantly over-/under-represented terms in WGCNA modules"))
+table(paste(terms.wgcna.sig$module, terms.wgcna.sig$invert, sep ="_"))
+
+write.table(terms.wgcna,
+            paste0(output_dir,"/module_functionaltermenrichment.tsv"),
+            row.names = F,
+            col.names = T,
+            quote = F,
+            sep = "\t")
+
+write.table(terms.wgcna.sig,
+            paste0(output_dir,"/module_functionaltermenrichment_sig.tsv"),
+            row.names = F,
+            col.names = T,
+            quote = F,
+            sep = "\t")
+
+geneinfo.wgcna <- geneinfo[match(rownames(tpm.de.wgcna), geneinfo$gene),]
+geneinfo.wgcna <- as.data.frame(cbind(geneinfo.wgcna,
+                                      tpm.de.wgcna$module,
+                                      tpm.de.wgcna$invert))
+colnames(geneinfo.wgcna )[(ncol(geneinfo.wgcna )-1)] <- "module"
+colnames(geneinfo.wgcna )[ncol(geneinfo.wgcna )] <- "invert"
+```
