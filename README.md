@@ -1,6 +1,10 @@
 # Drug repurposing of bromodomain inhibitors as a novel therapeutic for lymphatic filariasis guided by multi-species transcriptomics
 
-The zipped file contains two folders: (1) scripts, (2) htmls (3) input_data_files
+Matthew Chung
+
+2019-09-17
+
+The repository contains three folders: (1) scripts, (2) htmls (3) input_data_files used to replicate the transcriptomics analysis in the manuscript.
 
 # System requirements
 
