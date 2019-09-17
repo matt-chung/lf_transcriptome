@@ -47,7 +47,7 @@ No non-standard hardware is required.
 ## Installation
 
 RStudio installation is required along with the packages listed as follows:
- [1] ggdendro_0.1-20       pvclust_2.0-0         dendextend_1.9.0      factoextra_1.0.5      gridExtra_2.3         reshape_0.8.8        
+ [1] ggdendro_0.1-20       pvclust_2.0-0         dendextend_1.9.0      factoextra_1.0.5      gridExtra_2.3         reshape_0.8.8
  [7] ggplot2_3.1.0         gtools_3.8.1          WGCNA_1.66            fastcluster_1.1.25    dynamicTreeCut_1.63-1 edgeR_3.24.0         
 [13] limma_3.38.2        
 
@@ -86,8 +86,11 @@ For each of the Rmd files, the inputs are:
 ### aaegypti_transcriptome.Rmd
 
 geneinfo.path <- aaegypti_gene.info
+
 counts.path <- aaegypti_counts.tsv
+
 tpm.path <- aaegypti_tpm.tsv
+
 groups.path <- aaegypti_groups.tsv
 
 ### bmalayi_transcriptome.Rmd
