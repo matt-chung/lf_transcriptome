@@ -6,7 +6,7 @@ Matthew Chung
 
 [![DOI](https://zenodo.org/badge/209141734.svg)](https://zenodo.org/badge/latestdoi/209141734)
 
-The repository contains three folders: (1) scripts, (2) htmls (3) input_data_files used to replicate the transcriptomics analysis in the manuscript.
+The repository contains scripts and input_data_files to replicate the transcriptomics analysis in the manuscript. Additionally, the Supplementary Data for the manuscript is stored here.
 
 ## System requirements
 
