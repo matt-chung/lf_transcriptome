@@ -1,0 +1,53 @@
+time	drug	concentration	mfcount
+6 hr	JQ1(+)	100 uM	2
+6 hr	JQ1(+)	100 uM	1
+6 hr	JQ1(+)	10 uM	0
+6 hr	JQ1(+)	10 uM	0
+6 hr	JQ1(+)	7.5 uM	4
+6 hr	JQ1(+)	7.5 uM	3
+6 hr	JQ1(+)	5 uM	4
+6 hr	JQ1(+)	5 uM	1
+6 hr	JQ1(+)	2.5 uM	2
+6 hr	JQ1(+)	2.5 uM	2
+6 hr	JQ1(+)	1 uM	4
+6 hr	JQ1(+)	1 uM	6
+6 hr	JQ1(-)	100 uM	1
+6 hr	JQ1(-)	100 uM	4
+6 hr	JQ1(-)	10 uM	25
+6 hr	JQ1(-)	10 uM	10
+6 hr	JQ1(-)	7.5 uM	49
+6 hr	JQ1(-)	7.5 uM	51
+6 hr	JQ1(-)	5 uM	68
+6 hr	JQ1(-)	5 uM	46
+6 hr	JQ1(-)	2.5 uM	38
+6 hr	JQ1(-)	2.5 uM	18
+6 hr	JQ1(-)	1 uM	123
+6 hr	JQ1(-)	1 uM	101
+6 hr	DMSO	NA	136
+6 hr	DMSO	NA	163
+24 hr	JQ1(+)	100 uM	1
+24 hr	JQ1(+)	100 uM	0
+24 hr	JQ1(+)	10 uM	1
+24 hr	JQ1(+)	10 uM	0
+24 hr	JQ1(+)	7.5 uM	4
+24 hr	JQ1(+)	7.5 uM	4
+24 hr	JQ1(+)	5 uM	3
+24 hr	JQ1(+)	5 uM	2
+24 hr	JQ1(+)	2.5 uM	8
+24 hr	JQ1(+)	2.5 uM	8
+24 hr	JQ1(+)	1 uM	20
+24 hr	JQ1(+)	1 uM	11
+24 hr	JQ1(-)	100 uM	9
+24 hr	JQ1(-)	100 uM	22
+24 hr	JQ1(-)	10 uM	680
+24 hr	JQ1(-)	10 uM	205
+24 hr	JQ1(-)	7.5 uM	27
+24 hr	JQ1(-)	7.5 uM	835
+24 hr	JQ1(-)	5 uM	497
+24 hr	JQ1(-)	5 uM	236
+24 hr	JQ1(-)	2.5 uM	NA
+24 hr	JQ1(-)	2.5 uM	114
+24 hr	JQ1(-)	1 uM	489
+24 hr	JQ1(-)	1 uM	193
+24 hr	DMSO	NA	379
+24 hr	DMSO	NA	80

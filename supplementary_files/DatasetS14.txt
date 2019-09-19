@@ -1,0 +1,79 @@
+time	drug	concentration	motilityscore
+6 hr	JQ1(+)	100 uM	0
+6 hr	JQ1(+)	100 uM	0
+6 hr	JQ1(+)	10 uM	0
+6 hr	JQ1(+)	10 uM	0
+6 hr	JQ1(+)	7.5 uM	1
+6 hr	JQ1(+)	7.5 uM	1
+6 hr	JQ1(+)	5 uM	1
+6 hr	JQ1(+)	5 uM	1
+6 hr	JQ1(+)	2.5 uM	1
+6 hr	JQ1(+)	2.5 uM	2
+6 hr	JQ1(+)	1 uM	3
+6 hr	JQ1(+)	1 uM	3
+6 hr	JQ1(+)	100 uM	0
+6 hr	JQ1(+)	100 uM	0
+6 hr	JQ1(+)	10 uM	0
+6 hr	JQ1(+)	10 uM	0
+6 hr	JQ1(+)	7.5 uM	1
+6 hr	JQ1(+)	7.5 uM	1
+6 hr	JQ1(+)	5 uM	1
+6 hr	JQ1(+)	5 uM	1
+6 hr	JQ1(+)	2.5 uM	1
+6 hr	JQ1(+)	2.5 uM	2
+6 hr	JQ1(+)	1 uM	2
+6 hr	JQ1(+)	1 uM	3
+6 hr	JQ1(-)	100 uM	0
+6 hr	JQ1(-)	100 uM	0
+6 hr	JQ1(-)	10 uM	1
+6 hr	JQ1(-)	10 uM	2
+6 hr	JQ1(-)	7.5 uM	2
+6 hr	JQ1(-)	7.5 uM	3
+6 hr	JQ1(-)	5 uM	2
+6 hr	JQ1(-)	5 uM	3
+6 hr	JQ1(-)	2.5 uM	3
+6 hr	JQ1(-)	2.5 uM	3
+6 hr	JQ1(-)	1 uM	3
+6 hr	JQ1(-)	1 uM	3
+6 hr	JQ1(-)	100 uM	0
+6 hr	JQ1(-)	100 uM	0
+6 hr	JQ1(-)	10 uM	2
+6 hr	JQ1(-)	10 uM	2
+6 hr	JQ1(-)	7.5 uM	2
+6 hr	JQ1(-)	7.5 uM	2
+6 hr	JQ1(-)	5 uM	2
+6 hr	JQ1(-)	5 uM	3
+6 hr	JQ1(-)	2.5 uM	3
+6 hr	JQ1(-)	2.5 uM	3
+6 hr	JQ1(-)	1 uM	3
+6 hr	JQ1(-)	1 uM	4
+6 hr	DMSO	NA	3
+6 hr	DMSO	NA	3
+6 hr	DMSO	NA	4
+6 hr	DMSO	NA	4
+24 hr	JQ1(+)	100 uM	0
+24 hr	JQ1(+)	100 uM	0
+24 hr	JQ1(+)	10 uM	0
+24 hr	JQ1(+)	10 uM	0
+24 hr	JQ1(+)	7.5 uM	0
+24 hr	JQ1(+)	7.5 uM	1
+24 hr	JQ1(+)	5 uM	1
+24 hr	JQ1(+)	5 uM	1
+24 hr	JQ1(+)	2.5 uM	1
+24 hr	JQ1(+)	2.5 uM	2
+24 hr	JQ1(+)	1 uM	2
+24 hr	JQ1(+)	1 uM	3
+24 hr	JQ1(-)	100 uM	0
+24 hr	JQ1(-)	100 uM	0
+24 hr	JQ1(-)	10 uM	2
+24 hr	JQ1(-)	10 uM	2
+24 hr	JQ1(-)	7.5 uM	2
+24 hr	JQ1(-)	7.5 uM	3
+24 hr	JQ1(-)	5 uM	2
+24 hr	JQ1(-)	5 uM	2
+24 hr	JQ1(-)	2.5 uM	3
+24 hr	JQ1(-)	2.5 uM	4
+24 hr	JQ1(-)	1 uM	4
+24 hr	JQ1(-)	1 uM	4
+24 hr	DMSO	NA	4
+24 hr	DMSO	NA	4
