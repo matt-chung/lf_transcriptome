@@ -379,9 +379,10 @@ dev.off()
 
 ```{r pca, fig.height = 5, fig.width = 7}
 pca <- PCA(as.data.frame(scale(t(tpm.de))), graph = FALSE, ncp = ncol(counts) - 1)
+pcashape <- gsub("_Bm.*","",groups[,1])
 
 pca.plot <- ggplot()+
-  geom_point(aes(x=pca$ind$coord[,1], y=pca$ind$coord[,2], color = groups[,2], size = colSums(counts), shape = dendroshape))+
+  geom_point(aes(x=pca$ind$coord[,1], y=pca$ind$coord[,2], color = groups[,2], size = colSums(counts), shape = pcashape))+
   labs(col = "Samples", size = "Reads Mapped\nto Features", 
        x = paste0("PC1 (", round(pca$eig[1,2],1), "%)"), 
        y = paste0("PC2 (", round(pca$eig[2,2],1), "%)"))+
